@@ -208,6 +208,14 @@ public:
                              true,/*该选项是否必须赋值，如果没有默认值且为ArgRequired时用户必须提供该参数否则将抛异常*/
                              "日志保存文件夹路径",/*该选项说明文字*/
                              nullptr);
+
+        (*_parser) << Option(0,/*该选项简称，如果是\x00则说明无简称*/
+                             "strict_verify",/*该选项全称,每个选项必须有全称；不得为null或空字符串*/
+                             Option::ArgRequired,/*该选项后面必须跟值*/
+                             to_string(0).data(),/*该选项默认值*/
+                             false,/*该选项是否必须赋值，如果没有默认值且为ArgRequired时用户必须提供该参数否则将抛异常*/
+                             "ssl verify 严格模式",/*该选项说明文字*/
+                             nullptr);
     }
 };
 
@@ -237,6 +245,7 @@ int start_main(int argc,char *argv[]) {
         string ssl_file = cmd_main["ssl"];
         int threads = cmd_main["threads"];
         bool affinity = cmd_main["affinity"];
+        bool strict_verify = cmd_main["strict_verify"];
 
         // 设置日志  [AUTO-TRANSLATED:50372045]
         // Set log
@@ -293,15 +302,29 @@ int start_main(int argc,char *argv[]) {
         } else {
             // 加载文件夹下的所有证书  [AUTO-TRANSLATED:0e1f9b20]
             // Load all certificates under the folder
-            g_reload_certificates = [ssl_file]() {
-                File::scanDir(ssl_file, [](const string &path, bool isDir) {
+            g_reload_certificates = [ssl_file,strict_verify]() {
+                string cert,sign,enc,chain_cert;
+                File::scanDir(ssl_file, [&](const string &path, bool isDir) {
                     if (!isDir) {
+                        if (path.find("server_enc") !=-1 && enc.empty()) {
+                            enc = path;
+                        }else if (path.find("sign") !=-1 && sign.empty()) {
+                            sign = path;
+                        }else if (path.find("chain") !=-1 && chain_cert.empty()) {
+                            chain_cert = path;
+                        }else if (path.find("pem")!=-1 && cert.empty()){
+                            cert = path;
+                        }
                         // 最后的一个证书会当做默认证书(客户端ssl握手时未指定主机)  [AUTO-TRANSLATED:b242685c]
                         // The last certificate will be used as the default certificate (client ssl handshake does not specify the host)
-                        SSL_Initor::Instance().loadCertificate(path.data());
                     }
                     return true;
                 });
+                if (!cert.empty()&&
+                    !sign.empty()&&
+                    !enc.empty()) {
+                    SSL_Initor::Instance().loadCertificateWithGM(cert,enc,sign,chain_cert,strict_verify);
+                }
             };
         }
         g_reload_certificates();

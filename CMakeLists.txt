@@ -65,7 +65,7 @@ option(USE_SOLUTION_FOLDERS "Enable solution dir supported" ON)
 # Set the default buffer size of the socket to 256k. If set to 0, the default buffer size of the socket will not be set,
 # and the system kernel default value will be used (setting to 0 is only valid for linux)
 set(SOCKET_DEFAULT_BUF_SIZE 262144 CACHE STRING "Default buffer size for socket" FORCE)
-
+set(OPENSSL_ROOT_DIR "/opt/tongsuo/" CACHE STRING "OpenSSL root dir" FORCE)
 if("${CMAKE_BUILD_TYPE}" STREQUAL "")
   set(CMAKE_BUILD_TYPE "Debug")
 endif()
